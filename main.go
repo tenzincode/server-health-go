@@ -1,68 +1,77 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
 )
 
-type HealthData struct {
-	ServiceName string  `json:"service_name"`
-	Status      string  `json:"status"`
-	CPUUsage    float64 `json:"cpu_usage"`
-	MemoryUsage float64 `json:"memory_usage"`
+// PROMETHEUS
+
+// Define Prometheus metrics
+var (
+	cpuUsageGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "cpu_usage",
+		Help: "Current CPU usage",
+	})
+	memoryUsageGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "memory_usage",
+		Help: "Current memory usage",
+	})
+)
+
+// Register Prometheus metrics
+func init() {
+	prometheus.MustRegister(cpuUsageGauge)
+	prometheus.MustRegister(memoryUsageGauge)
 }
 
-func fetchRealData() HealthData {
-	// Get CPU usage percentage for all CPUs over 1 second
-	cpuUsage, _ := cpu.Percent(time.Second, false)
+// SERVER HEALTH
+func fetchMetrics() {
+	cpuUsage, _ := cpu.Percent(0, false) // Get CPU usage percentage for all CPUs over 1 second
+	vmStat, _ := mem.VirtualMemory()     // Get memory usage statistics
 
-	// Get memory usage statistics
-	vmStat, _ := mem.VirtualMemory()
-
-	return HealthData{
-		ServiceName: "My Go Service",
-		Status:      "Healthy",
-		CPUUsage:    cpuUsage[0],        // first element is total CPU usage
-		MemoryUsage: vmStat.UsedPercent, // Memory usage as a percentage
-	}
+	// Update Prometheus metrics
+	cpuUsageGauge.Set(cpuUsage[0])
+	memoryUsageGauge.Set(vmStat.UsedPercent)
 }
 
-func fetchMockData() HealthData {
-	return HealthData{
-		ServiceName: "Mock Service",
-		Status:      "Mock Healthy",
-		CPUUsage:    25.0,
-		MemoryUsage: 60.0,
-	}
+// Function to update mock metrics for testing
+func fetchMockMetrics() {
+	mockCPU := 25.0
+	mockMemory := 60.0
+
+	// Update Prometheus metrics with mock data
+	cpuUsageGauge.Set(mockCPU)
+	memoryUsageGauge.Set(mockMemory)
 }
 
-func healthHandler(mock bool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var data HealthData
-
-		if mock {
-			data = fetchMockData()
-		} else {
-			data = fetchRealData()
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-
-		if err := json.NewEncoder(w).Encode(data); err != nil {
-			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		}
-	}
+// Handler for updating mock metrics periodically
+func mockMetricsHandler(w http.ResponseWriter, r *http.Request) {
+	fetchMockMetrics()
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Mock metrics updated"))
 }
+
+// SERVER
 
 func main() {
-	// Setup routes for real and mock health checks
-	http.HandleFunc("/health", healthHandler(false))
-	http.HandleFunc("/mock-health", healthHandler(true))
+	// Start background goroutine to update the real data every 10 seconds
+	go func() {
+		for {
+			fetchMetrics() // Update Prometheus metrics with real data every 10 seconds
+			time.Sleep(10 * time.Second)
+		}
+	}()
+
+	// Routes for real and mock metrics checks
+	http.Handle("/metrics", promhttp.Handler())
+	http.HandleFunc("/mock-metrics", mockMetricsHandler)
 
 	server := &http.Server{
 		Addr:              ":8080",
