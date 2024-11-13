@@ -65,7 +65,7 @@ func main() {
 	go func() {
 		for {
 			fetchMetrics() // Update Prometheus metrics with real data every 10 seconds
-			time.Sleep(10 * time.Second)
+			time.Sleep(15 * time.Second)
 		}
 	}()
 
