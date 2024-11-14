@@ -1,12 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
 )
@@ -56,30 +53,4 @@ func mockMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	fetchMockMetrics()
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Mock metrics updated"))
-}
-
-// SERVER
-
-func main() {
-	// Start background goroutine to update the real data every 10 seconds
-	go func() {
-		for {
-			fetchMetrics() // Update Prometheus metrics with real data every 10 seconds
-			time.Sleep(15 * time.Second)
-		}
-	}()
-
-	// Routes for real and mock metrics checks
-	http.Handle("/metrics", promhttp.Handler())
-	http.HandleFunc("/mock-metrics", mockMetricsHandler)
-
-	server := &http.Server{
-		Addr:              ":8080",
-		ReadHeaderTimeout: 5 * time.Second,
-	}
-
-	fmt.Println("Starting server on :8080...")
-	if err := server.ListenAndServe(); err != nil {
-		fmt.Println("Server failed to start:", err)
-	}
 }
