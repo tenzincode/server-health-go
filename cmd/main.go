@@ -9,11 +9,13 @@ import (
 )
 
 func main() {
-	// Goroutine to fetch real data
+	// Goroutine ticker to fetch real data
 	go func() {
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
 		for {
-			health.FetchMetrics() // Update Prometheus metrics with real data every 10 seconds
-			time.Sleep(15 * time.Second)
+			health.FetchMetrics()
+			<-ticker.C
 		}
 	}()
 
