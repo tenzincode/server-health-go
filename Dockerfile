@@ -12,7 +12,7 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN go build -o server-health-go
+RUN go build -o server-health-go ./cmd
 
 # Start a new stage from a minimal Alpine image
 FROM alpine:latest
