@@ -1,21 +1,21 @@
 services:
   server-health-go:
     build: .
-    container_name: server-health-go
     ports:
       - "8080:8080"
     networks:
       - monitoring
+    container_name: server-health-go
 
   prometheus:
     image: prom/prometheus
-    container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - monitoring
+    container_name: prometheus
 
 networks:
   monitoring:

@@ -18,7 +18,7 @@ RUN go build -o server-health-go ./cmd
 FROM alpine:latest
 
 # Set the working directory for the runtime container
-WORKDIR /root/
+WORKDIR /app
 
 # Copy the built Go binary from the builder stage
 COPY --from=builder /app/server-health-go .
